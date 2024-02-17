@@ -1,0 +1,32 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+environs = "==9.5.0"
+jinja2 = "==3.1.2"
+python-telegram-bot = { version = "==20.6", extras = ["rate-limiter"] }
+langchain = "==0.0.339"
+openai = "==1.6.1"
+aiogram = "==3.1.1"
+aiohttp = "*"
+psycopg2 = "==2.9.9"
+black = "==23.11.0"
+feedparser = "*"
+python-dateutil = "*"
+beautifulsoup4 = "*"
+pytesseract = "*"
+pypdf2 = "*"
+python-docx = "*"
+pillow = "*"
+fpdf = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.11"
+python_full_version = "3.11.6"
+
+[scripts]
+black = "black ."
