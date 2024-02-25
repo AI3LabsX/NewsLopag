@@ -1,6 +1,6 @@
 environs==9.5.0
 Jinja2==3.1.2
-python-telegram-bot==20.6 
+python-telegram-bot[rate-limiter]==20.6 
 langchain==0.0.339
 openai==1.6.1
 aiogram==3.1.1
