@@ -267,52 +267,52 @@ async def summary_article(article):
 
 @exponential_backoff_async(max_iterations=3, exponent_limit=2)
 async def monitor_rss_feeds_for_user(user_id, context, update):
-    logger.info(f"Starting RSS feed monitoring for user: {user_id}")
+    logger.debug(f"Starting RSS feed monitoring for user: {user_id}")
     chat_id = update.effective_chat.id
 
     while True:
         try:
             rss_feeds = await get_rss_feeds(user_id)
+            logger.debug(f"Retrieved RSS feeds for user {user_id}: {rss_feeds}")
             if not rss_feeds:
                 logger.warning(f"No RSS feeds found for user: {user_id}")
                 break
 
-            # Initialize 'latest_article' for new user_id
             if user_id not in context.user_data:
                 context.user_data[user_id] = {'latest_article': {}}
-            print(context.user_data)
-            user_data = context.user_data[user_id]
+            logger.debug(f"User data for {user_id}: {context.user_data[user_id]}")
+
             total_news = ""
             for rss_feed in rss_feeds:
-
                 feed = await fetch_rss_feed(rss_feed)
+                logger.debug(f"Fetched feed for {rss_feed}: {len(feed.entries)} entries found")
                 if feed.entries:
                     latest_article = feed.entries[0]
                     latest_article_date = parser.parse(latest_article.published)
+                    logger.debug(f"Latest article date for feed {rss_feed}: {latest_article_date}")
 
-                    # Process the article if it's new or if no article date is stored yet
-                    if (rss_feed not in user_data['latest_article']) or \
-                            (latest_article_date > user_data['latest_article'][rss_feed]):
-                        logger.info(f"Processing article for feed {rss_feed}")
+                    if (rss_feed not in context.user_data[user_id]['latest_article']) or \
+                            (latest_article_date > context.user_data[user_id]['latest_article'][rss_feed]):
                         captions = await process_article(user_id, latest_article)
                         if captions:
                             total_news += captions
-
-                        user_data['latest_article'][rss_feed] = latest_article_date
+                        context.user_data[user_id]['latest_article'][rss_feed] = latest_article_date
                     else:
-                        logger.info(f"No new article in feed {rss_feed}")
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text=total_news,
-            )
-            await asyncio.sleep(300)  # Check feeds every 10 minutes
+                        logger.debug(f"No new article to process for feed {rss_feed}")
+
+            if total_news:
+                await context.bot.send_message(chat_id=chat_id, text=total_news)
+                logger.debug(f"Sent message to chat {chat_id}")
+            else:
+                logger.debug(f"No news to send for user {user_id}")
+
+            await asyncio.sleep(300)  # Check feeds every 5 minutes
         except Exception as e:
-            logger.error(f"Error in monitor_rss_feeds_for_user: {e}")
+            logger.error(f"Error in monitor_rss_feeds_for_user for user {user_id}: {e}")
         finally:
             if user_id not in context.bot_data.get('rss_users', {}):
                 logger.info(f"Stopping RSS feed monitoring for user: {user_id}")
                 break
-
 
 # TODO: Here will be the logic for decision making if the article from feed corresponds with the topic. We can
 #  use gpt to ask AI if article title + content
