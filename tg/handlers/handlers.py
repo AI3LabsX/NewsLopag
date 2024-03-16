@@ -305,7 +305,6 @@ async def monitor_rss_feeds_for_user(user_id, context, update):
                 logger.info(f"Stopping RSS feed monitoring for user: {user_id}")
                 break
 
-
 # TODO: Here will be the logic for decision making if the article from feed corresponds with the topic. We can
 #  use gpt to ask AI if article title + content
 async def process_article(user_id, article):
