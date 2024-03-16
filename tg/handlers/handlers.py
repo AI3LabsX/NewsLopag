@@ -56,14 +56,13 @@ async def callback_handler(update: Update, context: CallbackContext):
     query = update.callback_query
     callback_data = query.data
     user_id = query.from_user.id
-    print(callback_data)
+
     try:
         await query.answer()
         topics = await get_topics(user_id)
         message_text = "Here is you Settings:\n\nYour Topics: " + (', '.join(topics) if topics else "No topics added.")
 
         if callback_data.startswith("choose_topic"):
-            # Buttons for adding or deleting topics
             keyboard = [
                 [InlineKeyboardButton("Add Topic", callback_data='add_topic')],
                 [InlineKeyboardButton("Delete Topic", callback_data='delete_topic')],
@@ -73,12 +72,11 @@ async def callback_handler(update: Update, context: CallbackContext):
             await query.edit_message_text(text=message_text, reply_markup=reply_markup)
 
         elif callback_data.startswith("add_topic"):
-            # Buttons for adding or deleting topics
             keyboard = [
                 [InlineKeyboardButton("Confirm Changes", callback_data='confirm_changes')]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            context.user_data['adding_topic'] = True  # Flag to indicate the user is adding a topic
+            context.user_data['adding_topic'] = True
             await query.edit_message_text(text=message_text + "\n\nPlease type the topic you want to add and send.",
                                           reply_markup=reply_markup)
 
@@ -89,11 +87,8 @@ async def callback_handler(update: Update, context: CallbackContext):
             await query.edit_message_text(text="Select a topic to delete:", reply_markup=reply_markup)
 
         elif callback_data.startswith("delete_"):
-            print(callback_data)
-            selected = callback_data.split("_")[-1]  # Extract topic name
-            print(selected)
-            if "_top" in callback_data:
-                # Buttons for adding or deleting topics
+            selected = callback_data.split("_")[-1]
+            if "_top_" in callback_data:
                 keyboard = [
                     [InlineKeyboardButton("Add Topic", callback_data='add_topic')],
                     [InlineKeyboardButton("Delete Topic", callback_data='delete_topic')],
@@ -103,10 +98,10 @@ async def callback_handler(update: Update, context: CallbackContext):
                 await delete_topic_from_db(user_id, selected)
                 updated_topics = await get_topics(user_id)
                 await query.edit_message_text(
-                    text="Here is you Settings:\n\nYour Topics: " + (
+                    text="Settings updated. \n\nYour Topics: " + (
                         ', '.join(updated_topics) if updated_topics else "No topics added."), reply_markup=reply_markup)
 
-            elif "_rss" in callback_data:
+            else:
                 keyboard = [
                     [InlineKeyboardButton("Add RSS Feed", callback_data='add_rss')],
                     [InlineKeyboardButton("Delete RSS Feed", callback_data='deletes_rss')],
@@ -120,7 +115,6 @@ async def callback_handler(update: Update, context: CallbackContext):
                         ', '.join(
                             [urlparse(str(rss)).hostname for rss in updated_rss]) if updated_rss else "No RSS added."),
                     reply_markup=reply_markup)
-
 
         elif callback_data.startswith("add_delete_rss"):
             rss_feeds = await get_rss_feeds(user_id)
@@ -388,7 +382,7 @@ async def handle_text(update: Update, context: CallbackContext):
                 [InlineKeyboardButton("Confirm Changes", callback_data='confirm_changes')]
             ])
         else:
-            context.user_data['adding_topic'] = False
+            context.user_data['adding_topic'] = False  # Clear the flag
             updated_topics = await get_topics(user_id)
             message_text = f"Settings updated. Your current topics: {', '.join(updated_topics) if updated_topics else 'None'}"
             reply_markup = InlineKeyboardMarkup([
@@ -412,7 +406,7 @@ async def handle_text(update: Update, context: CallbackContext):
                 await update.message.delete()  # Delete the user's message
                 message_text = "Invalid URL. Please enter a valid RSS feed URL."
         else:
-            context.user_data['adding_rss'] = False
+            context.user_data['adding_rss'] = False  # Clear the flag
             updated_rss_feeds = await get_rss_feeds(user_id)
             message_text = "Settings updated. Your RSS feeds: " + (', '.join(
                 [urlparse(str(feed)).hostname for feed in updated_rss_feeds]) if updated_rss_feeds else "None")
@@ -430,7 +424,7 @@ async def handle_text(update: Update, context: CallbackContext):
 
         # Perform translation
         translated_text = await translate_text(extracted_text, target_language)
-
+        print(translated_text)
         # Create a new Document
         doc = Document()
         doc.add_heading('Translated Text', level=1)
@@ -474,10 +468,11 @@ async def handle_file(update: Update, context: CallbackContext):
             extracted_text = extract_text_from_docx(file_path)
 
         # Store the extracted text and set a flag indicating we're waiting for a language code
+
         context.user_data['extracted_text'] = extracted_text
         context.user_data['awaiting_language'] = True
         context.user_data['input_file_path'] = file_path
-
+        print(context.user_data['extracted_text'])
         # Ask the user for the language to translate to with ForceReply
         await update.message.reply_text(
             "Please reply with the language code (e.g., 'en' for English) to translate the text into.",
@@ -507,19 +502,22 @@ async def translate_text(text, language):
         # This is the default and can be omitted
         api_key=os.environ.get("OPENAI_API_KEY"),
     )
+    text = text.replace('\n', ' ')
     data = {
-        "model": "gpt-3.5-turbo-16k",
+        "model": "gpt-4-turbo-preview",
         "messages": [
             {
                 "role": "system",
                 "content": "PLease Translate the text into the langauge Specified by user! Please try to structure "
-                           "the text and make it beautiful without changing context. Please also fix all unicode characters",
+                           "the text and make it beautiful without changing context. PLease provide full word to word professional translation! Ensure that output text and input text have the same meaning. Please also fix all unicode characters"
+                           "Insure that full text is provide as output to the user, no need for anything extra! For example suer can ask to translate text into Hindi, so provide good transaltion of full text!",
             },
             {
                 "role": "user",
                 "content": f"Text: {text}\nIn langauge: {language}",
             },
         ],
+        "max_tokens": 4000,
         "temperature": 0,
         "top_p": 0.4,
         "frequency_penalty": 1.5,
